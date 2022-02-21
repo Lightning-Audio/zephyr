@@ -58,3 +58,8 @@ properties:
         - "PCLK32M"
         - "PCLK32M_HFXO"
         - "ACLK"
+    
+    clock-bypass:
+      type: boolean
+      required: false
+      description: Bypass selected clock to MCK and SCK pins.

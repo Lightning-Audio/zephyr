@@ -43,6 +43,7 @@ struct i2s_nrfx_drv_cfg {
 		PCLK32M_HFXO,
 		ACLK
 	} clk_src;
+	bool clk_bypass;
 };
 
 /* Finds the clock settings that give the frame clock frequency closest to
@@ -709,7 +710,7 @@ static int trigger_start(const struct device *dev)
 	nrf_i2s_clk_configure(NRF_I2S0,
 			      drv_cfg->clk_src == ACLK ? NRF_I2S_CLKSRC_ACLK
 						       : NRF_I2S_CLKSRC_PCLK32M,
-			      false);
+			      drv_cfg->clk_bypass);
 #endif
 
 	/* If it is required to use certain HF clock, request it to be running
@@ -879,6 +880,7 @@ static const struct i2s_driver_api i2s_nrf_drv_api = {
 		    (DT_PROP(I2S(idx), name##_pin)),		\
 		    (NRFX_I2S_PIN_NOT_USED))
 #define I2S_CLK_SRC(idx)  DT_STRING_TOKEN(I2S(idx), clock_source)
+#define I2S_CLK_BYPASS(idx)  DT_PROP(I2S(idx), clock_bypass)
 
 #define I2S_NRFX_DEVICE(idx)						     \
 	static void *tx_msgs##idx[CONFIG_I2S_NRFX_TX_BLOCK_COUNT];	     \
@@ -913,6 +915,7 @@ static const struct i2s_driver_api i2s_nrf_drv_api = {
 							I2S_PIN(idx, sdout), \
 							I2S_PIN(idx, sdin)), \
 		.clk_src = I2S_CLK_SRC(idx),				     \
+		.clk_bypass = I2S_CLK_BYPASS(idx),			     \
 	};								     \
 	BUILD_ASSERT(I2S_CLK_SRC(idx) != ACLK || NRF_I2S_HAS_CLKCONFIG,	     \
 		"Clock source ACLK is not available.");			     \
@@ -921,6 +924,8 @@ static const struct i2s_driver_api i2s_nrf_drv_api = {
 				      hfclkaudio_frequency),		     \
 		"Clock source ACLK requires the hfclkaudio-frequency "	     \
 		"property to be defined in the nordic,nrf-clock node.");     \
+	BUILD_ASSERT(I2S_CLK_SRC(idx) == ACLK || !I2S_CLK_BYPASS(idx),	     \
+		"Clock bypass requires the ACLK Clock source.");	     \
 	DEVICE_DT_DEFINE(I2S(idx), i2s_nrfx_init##idx, NULL,		     \
 			 &i2s_nrfx_data##idx, &i2s_nrfx_cfg##idx,	     \
 			 POST_KERNEL, CONFIG_I2S_INIT_PRIORITY,		     \
