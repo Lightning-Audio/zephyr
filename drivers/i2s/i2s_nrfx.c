@@ -57,12 +57,12 @@ static void find_suitable_clock(const struct i2s_nrfx_drv_cfg *drv_cfg,
 		uint16_t        ratio_val;
 		nrf_i2s_ratio_t ratio_enum;
 	} ratios[] = {
-		{  32, NRF_I2S_RATIO_32X },
-		{  48, NRF_I2S_RATIO_48X },
-		{  64, NRF_I2S_RATIO_64X },
-		{  96, NRF_I2S_RATIO_96X },
-		{ 128, NRF_I2S_RATIO_128X },
-		{ 192, NRF_I2S_RATIO_192X },
+		// {  32, NRF_I2S_RATIO_32X },
+		// {  48, NRF_I2S_RATIO_48X },
+		// {  64, NRF_I2S_RATIO_64X },
+		// {  96, NRF_I2S_RATIO_96X },
+		// { 128, NRF_I2S_RATIO_128X },
+		// { 192, NRF_I2S_RATIO_192X },
 		{ 256, NRF_I2S_RATIO_256X },
 		{ 384, NRF_I2S_RATIO_384X },
 		{ 512, NRF_I2S_RATIO_512X }
@@ -78,7 +78,56 @@ static void find_suitable_clock(const struct i2s_nrfx_drv_cfg *drv_cfg,
 		 */
 		? DT_PROP_OR(DT_NODELABEL(clock), hfclkaudio_frequency, 0)
 		: 32*1000*1000UL;
-	uint32_t bits_per_frame = 2 * i2s_cfg->word_size;
+	uint32_t bits_per_frame;
+	switch (i2s_cfg->word_size) {
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_8Bit)
+	case NRF_I2S_SWIDTH_8BIT:
+#endif
+	case 8:
+		bits_per_frame = 2 * 8;
+		break;
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_16Bit)
+	case NRF_I2S_SWIDTH_16BIT:
+#endif
+	case 16:
+		bits_per_frame = 2 * 16;
+		break;
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_24Bit)
+	case NRF_I2S_SWIDTH_24BIT:
+#endif
+	case 24:
+		bits_per_frame = 2 * 24;
+		break;
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_32Bit)
+	case NRF_I2S_SWIDTH_32BIT:
+	case 32:
+		bits_per_frame = 2 * 32;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_8BitIn16)
+	case NRF_I2S_SWIDTH_8BIT_IN16BIT:
+		bits_per_frame = 2 * 16;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_8BitIn32)
+	case NRF_I2S_SWIDTH_8BIT_IN32BIT:
+		bits_per_frame = 2 * 32;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_16BitIn32)
+	case NRF_I2S_SWIDTH_16BIT_IN32BIT:
+		bits_per_frame = 2 * 32;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_24BitIn32)
+	case NRF_I2S_SWIDTH_24BIT_IN32BIT:
+		bits_per_frame = 2 * 32;
+		break;
+#endif
+	default:
+		LOG_ERR("Unsupported word size: %u", i2s_cfg->word_size);
+		return -EINVAL;
+	}
 	uint32_t best_diff = UINT32_MAX;
 	uint8_t r, best_r = 0;
 	nrf_i2s_mck_t best_mck_cfg = 0;
@@ -177,8 +226,8 @@ static void find_suitable_clock(const struct i2s_nrfx_drv_cfg *drv_cfg,
 
 	config->mck_setup = best_mck_cfg;
 	config->ratio = ratios[best_r].ratio_enum;
-	LOG_INF("I2S MCK frequency: %u, actual PCM rate: %u",
-		best_mck, best_mck / ratios[best_r].ratio_val);
+	LOG_INF("I2S MCK frequency: %u, actual PCM rate: %u, SCK should be: %u",
+		best_mck, best_mck / ratios[best_r].ratio_val, bits_per_frame * best_mck / ratios[best_r].ratio_val);
 }
 
 static bool get_next_tx_buffer(struct i2s_nrfx_drv_data *drv_data,
@@ -427,18 +476,48 @@ static int i2s_nrfx_configure(const struct device *dev, enum i2s_dir dir,
 	nrfx_cfg = drv_cfg->nrfx_def_cfg;
 
 	switch (i2s_cfg->word_size) {
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_8Bit)
+	case NRF_I2S_SWIDTH_8BIT:
+#endif
 	case 8:
 		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_8BIT;
 		break;
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_16Bit)
+	case NRF_I2S_SWIDTH_16BIT:
+#endif
 	case 16:
 		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_16BIT;
 		break;
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_24Bit)
+	case NRF_I2S_SWIDTH_24BIT:
+#endif
 	case 24:
 		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_24BIT;
 		break;
 #if defined(I2S_CONFIG_SWIDTH_SWIDTH_32Bit)
+	case NRF_I2S_SWIDTH_32BIT:
 	case 32:
 		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_32BIT;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_8BitIn16)
+	case NRF_I2S_SWIDTH_8BIT_IN16BIT:
+		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_8BIT_IN16BIT;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_8BitIn32)
+	case NRF_I2S_SWIDTH_8BIT_IN32BIT:
+		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_8BIT_IN32BIT;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_16BitIn32)
+	case NRF_I2S_SWIDTH_16BIT_IN32BIT:
+		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_16BIT_IN32BIT;
+		break;
+#endif
+#if defined(I2S_CONFIG_SWIDTH_SWIDTH_24BitIn32)
+	case NRF_I2S_SWIDTH_24BIT_IN32BIT:
+		nrfx_cfg.sample_width = NRF_I2S_SWIDTH_24BIT_IN32BIT;
 		break;
 #endif
 	default:
@@ -591,8 +670,8 @@ static int i2s_nrfx_write(const struct device *dev,
 	}
 
 	if (size != drv_data->tx.cfg.block_size) {
-		LOG_ERR("This device can only write blocks of %u bytes",
-			drv_data->tx.cfg.block_size);
+		LOG_ERR("This device can only write blocks of %u bytes, but is trying to write %u",
+			drv_data->tx.cfg.block_size, size);
 		return -EIO;
 	}
 
@@ -697,6 +776,8 @@ static int trigger_start(const struct device *dev)
 	const nrfx_i2s_config_t *nrfx_cfg = (drv_data->active_dir == I2S_DIR_TX)
 					    ? &drv_data->tx.nrfx_cfg
 					    : &drv_data->rx.nrfx_cfg;
+
+	LOG_INF("MCKFREQ %u, RATIO %u, MODE %u", nrfx_cfg->mck_setup, nrfx_cfg->ratio, nrfx_cfg->mode);
 
 	err = nrfx_i2s_init(nrfx_cfg, drv_cfg->data_handler);
 	if (err != NRFX_SUCCESS) {
@@ -924,8 +1005,6 @@ static const struct i2s_driver_api i2s_nrf_drv_api = {
 				      hfclkaudio_frequency),		     \
 		"Clock source ACLK requires the hfclkaudio-frequency "	     \
 		"property to be defined in the nordic,nrf-clock node.");     \
-	BUILD_ASSERT(I2S_CLK_SRC(idx) == ACLK || !I2S_CLK_BYPASS(idx),	     \
-		"Clock bypass requires the ACLK Clock source.");	     \
 	DEVICE_DT_DEFINE(I2S(idx), i2s_nrfx_init##idx, NULL,		     \
 			 &i2s_nrfx_data##idx, &i2s_nrfx_cfg##idx,	     \
 			 POST_KERNEL, CONFIG_I2S_INIT_PRIORITY,		     \
